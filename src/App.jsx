@@ -25,22 +25,40 @@ const Web3Provider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   const connectWallet = async () => {
+    console.log('Connect wallet called');
+    
     if (typeof window.ethereum === 'undefined') {
-      setError('MetaMask is not installed.');
+      console.log('MetaMask not installed');
+      setError('MetaMask is not installed. Please install MetaMask to continue.');
       return;
     }
+
     try {
       setLoading(true);
       setError(null);
+      console.log('Requesting accounts...');
+
       const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-      if (accounts.length === 0) throw new Error('No accounts found');
+      console.log('Accounts received:', accounts);
+      
+      if (accounts.length === 0) {
+        setError('No accounts found. Please connect an account in MetaMask.');
+        return;
+      }
+
+      console.log('Creating provider...');
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
       const address = await signer.getAddress();
+      console.log('Address:', address);
+
       setProvider(provider);
       setAccount(address);
+      console.log('Wallet connected successfully!');
+      
     } catch (err) {
-      setError(err.message || 'Failed to connect');
+      console.error('Connection error:', err);
+      setError(err.message || 'Failed to connect wallet');
     } finally {
       setLoading(false);
     }
@@ -64,18 +82,27 @@ const Web3Provider = ({ children }) => {
             setAccount(accounts[0]);
           }
         } catch (err) {
-          console.error(err);
+          console.error('Error checking connection:', err);
         }
       }
     };
+
     checkConnection();
+
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', (accounts) => {
-        if (accounts.length === 0) disconnectWallet();
-        else setAccount(accounts[0]);
+        if (accounts.length === 0) {
+          disconnectWallet();
+        } else {
+          setAccount(accounts[0]);
+        }
       });
-      window.ethereum.on('chainChanged', () => window.location.reload());
+
+      window.ethereum.on('chainChanged', () => {
+        window.location.reload();
+      });
     }
+
     return () => {
       if (window.ethereum) {
         window.ethereum.removeListener('accountsChanged', () => {});
@@ -84,8 +111,21 @@ const Web3Provider = ({ children }) => {
     };
   }, []);
 
-  const value = { account, provider, contract, error, loading, connectWallet, disconnectWallet };
-  return <Web3Context.Provider value={value}>{children}</Web3Context.Provider>;
+  const value = {
+    account,
+    provider,
+    contract,
+    error,
+    loading,
+    connectWallet,
+    disconnectWallet
+  };
+
+  return (
+    <Web3Context.Provider value={value}>
+      {children}
+    </Web3Context.Provider>
+  );
 };
 
 export { useWeb3, Web3Provider };
@@ -94,37 +134,46 @@ const AppContent = () => {
   const { account, error } = useWeb3();
 
   return (
-    <div style={{ minHeight: '100vh', padding: '2rem 1.5rem' }}>
-      <header style={{ textAlign: 'center', marginBottom: '3rem' }}>
+    <div style={{
+      minHeight: '100vh',
+      padding: '2rem 1rem',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #eef2f6 100%)',
+    }}>
+      <header style={{
+        textAlign: 'center',
+        marginBottom: '2.5rem',
+      }}>
         <h1 style={{
-          fontSize: '3.5rem',
+          fontSize: '2.5rem',
           fontWeight: '800',
-          background: 'linear-gradient(135deg, #a78bfa, #22d3ee)',
+          background: 'linear-gradient(135deg, #4f46e5, #0d9488)',
           WebkitBackgroundClip: 'text',
           backgroundClip: 'text',
           color: 'transparent',
           marginBottom: '1.5rem',
-          letterSpacing: '-0.02em',
-          fontFamily: "'Space Grotesk', monospace",
+          letterSpacing: '-0.025em',
         }}>
           🗳️ Secure Voting DApp
         </h1>
         <ConnectWallet />
       </header>
 
-      <main style={{ maxWidth: '1400px', margin: '0 auto' }}>
+      <main style={{ maxWidth: '1280px', margin: '0 auto' }}>
         {error && (
           <div style={{
+            color: '#991b1b',
+            textAlign: 'center',
             marginBottom: '1.5rem',
             padding: '1rem 1.5rem',
-            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-            backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
+            backgroundColor: '#fee2e2',
             borderRadius: '1rem',
-            textAlign: 'center',
-            color: '#fca5a5',
+            border: '1px solid #fecaca',
+            backdropFilter: 'blur(4px)',
+            fontSize: '0.875rem',
           }}>
-            ⚠️ {error}
+            <strong>⚠️ Error:</strong> {error}
+            <br />
+            <small>Check browser console (F12) for more details</small>
           </div>
         )}
 
@@ -132,23 +181,69 @@ const AppContent = () => {
           <div style={{
             display: 'grid',
             gap: '1.5rem',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
           }}>
-            <div className="glass-card" style={{ overflow: 'hidden' }}><VoterRegistration /></div>
-            <div className="glass-card" style={{ overflow: 'hidden' }}><ProposalForm /></div>
-            <div className="glass-card" style={{ overflow: 'hidden' }}><AdminPanel /></div>
-            <div className="glass-card" style={{ overflow: 'hidden', gridColumn: '1 / -1' }}><ProposalList /></div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1.5rem',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.02)',
+              overflow: 'hidden',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+            }}>
+              <VoterRegistration />
+            </div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1.5rem',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.02)',
+              overflow: 'hidden',
+            }}>
+              <ProposalForm />
+            </div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1.5rem',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.02)',
+              overflow: 'hidden',
+            }}>
+              <AdminPanel />
+            </div>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '1.5rem',
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05), 0 8px 10px -6px rgba(0,0,0,0.02)',
+              overflow: 'hidden',
+              gridColumn: '1 / -1',
+            }}>
+              <ProposalList />
+            </div>
           </div>
         ) : (
-          <div className="glass-card" style={{
+          <div style={{
             textAlign: 'center',
             padding: '3rem 2rem',
-            maxWidth: '500px',
+            backgroundColor: 'white',
+            borderRadius: '2rem',
+            boxShadow: '0 20px 25px -12px rgba(0,0,0,0.1)',
+            maxWidth: '600px',
             margin: '0 auto',
           }}>
-            <div style={{ fontSize: '5rem', marginBottom: '1rem' }}>🔐</div>
-            <h2 style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>Welcome</h2>
-            <p style={{ color: 'rgba(255,255,255,0.6)' }}>Connect your wallet to start voting</p>
+            <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🔐</div>
+            <h2 style={{
+              fontSize: '1.8rem',
+              fontWeight: '600',
+              color: '#1f2937',
+              marginBottom: '0.75rem',
+            }}>
+              Welcome to Secure Voting
+            </h2>
+            <p style={{
+              color: '#6b7280',
+              fontSize: '1rem',
+              lineHeight: '1.5',
+            }}>
+              Please connect your wallet to access voting features
+            </p>
           </div>
         )}
       </main>
